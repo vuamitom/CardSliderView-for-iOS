@@ -18,9 +18,9 @@
 
 #import "CardSliderView.h"
 
-#define kTransitionCardFrame CGRectMake(cardScroller.frame.size.width*2, 0, cardScroller.frame.size.width, cardScroller.frame.size.height);
-#define kActiveCardFrame CGRectMake(cardScroller.frame.size.width, 0, cardScroller.frame.size.width, cardScroller.frame.size.height);
-#define kFauxCardFrame CGRectMake(0, 0, cardScroller.frame.size.width, cardScroller.frame.size.height);
+#define kTransitionCardFrame CGRectMake(cardScroller.frame.size.width*2, 0, cardScroller.frame.size.width, cardScroller.frame.size.height)
+#define kActiveCardFrame CGRectMake(cardScroller.frame.size.width, 0, cardScroller.frame.size.width, cardScroller.frame.size.height)
+#define kFauxCardFrame CGRectMake(0, 0, cardScroller.frame.size.width, cardScroller.frame.size.height)
 
 
 @interface CardSliderView() {
@@ -85,17 +85,17 @@
 	cardScroller.showsVerticalScrollIndicator = NO;
 	[cardScroller setBounces:NO];
 	
-	activeCard = [[UIScrollView alloc] init];
+	activeCard = [[UIView alloc] init];
 	activeCard.frame = kActiveCardFrame;
-	transitionCard = [[UIScrollView alloc] initWithFrame:cardScroller.frame];
-	transitionCardShell = [[UIScrollView alloc] initWithFrame:cardScroller.frame];
+	transitionCard = [[UIView alloc] initWithFrame:cardScroller.frame];
+	transitionCardShell = [[UIView alloc] initWithFrame:cardScroller.frame];
 	
 	if (self.dataSource) {
 		incomingCardView = [self.dataSource viewForCurrentCardForCardSlider:self];
 		[activeCard addSubview:incomingCardView];
-		UIView *white = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 50, 50)];
-		white.backgroundColor = [UIColor whiteColor];
-		[activeCard addSubview:white];
+		//UIView *white = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 50, 50)];
+		//white.backgroundColor = [UIColor whiteColor];
+		//[activeCard addSubview:white];
 		[cardScroller addSubview:activeCard];
 	}
 	
@@ -110,13 +110,32 @@
 
 }
 
+- (void) setCurrentView:(UIView *)card
+{
+    //set current view
+    [activeCard addSubview:card];
+    
+}
+
 #pragma mark - ScrollView Methods
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-	
+  
+    
+    NSLog(@"Scrolled to position = %f", scrollView.contentOffset.x);
+    
 	if (scrollView.contentOffset.x > scrollView.contentSize.width/3+1) {
+        
+        if([self.dataSource viewForNextCardForCardSlider:self] == nil){
+            startedIncompleteNextScroll = NO;
+            didStartScrollingNext = NO;
+            currentCardView = [self.dataSource viewForCurrentCardForCardSlider:self];
+            scrollView.contentOffset = CGPointMake(scrollView.frame.size.width,0);
+            return;
+        }
+        
 		// NEW CARD COMING FROM RIGHT <---x
-		
+        
 		if (!didStartScrollingNext) {
 			
 			if (startedIncompletePreviousScroll) {
@@ -125,27 +144,40 @@
 			}
 			if (!startedIncompleteNextScroll) {
 				startedIncompleteNextScroll = YES;
-				startedIncompleteNextScroll = YES;
 				currentCardView = [self.dataSource viewForCurrentCardForCardSlider:self];
 				incomingCardView = [self.dataSource viewForNextCardForCardSlider:self];
 			}
 			
-			[transitionCard addSubview:incomingCardView];
-			transitionCard.frame = kTransitionCardFrame;
-			[cardScroller addSubview:transitionCard];
-			
-			activeCard.frame = kFauxCardFrame;
-			[activeCard addSubview:currentCardView];
-			[transitionCardShell addSubview:activeCard];
-			
-			didStartScrollingNext = YES;
-			didStartScrollingPrev = NO;
+            
+                /*
+                [transitionCard addSubview:incomingCardView];
+                transitionCard.frame = kTransitionCardFrame;
+                [cardScroller addSubview:transitionCard];
+                
+                activeCard.frame = kFauxCardFrame;
+                [activeCard addSubview:currentCardView];
+                [transitionCardShell addSubview:activeCard];
+                */
+            
+            [transitionCard  addSubview:currentCardView];            
+            activeCard.frame = kTransitionCardFrame;
+            [activeCard addSubview:incomingCardView];
+            
+            didStartScrollingNext = YES;
+            didStartScrollingPrev = NO;
+
 		}
-	} else if (scrollView.contentOffset.x < scrollView.contentSize.width/3-1){
+	} else if (scrollView.contentOffset.x < scrollView.frame.size.width-1){
 		// OLD CARD GOING RIGHT x--->
-		
-		activeCard.frame = kActiveCardFrame;
-				
+        
+		if([self.dataSource viewForPreviousCardForCardSlider:self] == nil){
+
+            currentCardView = [self.dataSource viewForCurrentCardForCardSlider:self];
+            scrollView.contentOffset = CGPointMake(scrollView.frame.size.width,0);
+            return;
+        }
+    
+        
 		if (!didStartScrollingPrev) {
 			
 			if (startedIncompleteNextScroll) {
@@ -154,19 +186,23 @@
 			}
 			if (!startedIncompletePreviousScroll) {
 				startedIncompletePreviousScroll = YES;
-				startedIncompletePreviousScroll = YES;
 				currentCardView = [self.dataSource viewForCurrentCardForCardSlider:self];
 				incomingCardView = [self.dataSource viewForPreviousCardForCardSlider:self];
 			}
 			
+
+
 			[transitionCard addSubview:incomingCardView];
-			transitionCard.frame = kFauxCardFrame;
-			[transitionCardShell addSubview:transitionCard];
-			
-			[cardScroller addSubview:activeCard];
+			//transitionCard.frame = kFauxCardFrame;
+			//[transitionCardShell addSubview:transitionCard];
+            activeCard.frame = kActiveCardFrame;
+			//[cardScroller addSubview:activeCard];
 			didStartScrollingPrev = YES;
 			didStartScrollingNext = NO;
+        
+
 		}
+         
 	}
 	
 	//Dim the background card:
@@ -179,22 +215,30 @@
 }
 
 -(void) scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
-	
+    NSLog(@"done dragging %f", scrollView.contentOffset.x);
 	if (scrollView.contentOffset.x == 0) {
 		//DECREMENTED:
 		activeCard.frame = kActiveCardFrame;
 		[activeCard addSubview:incomingCardView];
 		startedIncompletePreviousScroll = NO;
-		
-	} else if (scrollView.contentOffset.x == scrollView.frame.size.width) {
+        currentCardView = incomingCardView;
+		[self.delegate cardSliderDidSlidePrev:self] ;
+        
+	} else if (scrollView.contentOffset.x >= scrollView.frame.size.width && scrollView.contentOffset.x < scrollView.frame.size.width * 2) {
 		//currentCard DID NOT CHANGE
+        //return card if necessary
+        activeCard.frame = kActiveCardFrame;
+        [activeCard addSubview:currentCardView];
 		
 	} else if (scrollView.contentOffset.x == scrollView.frame.size.width*2) {
 		//INCREMENTED:
+
 		startedIncompleteNextScroll = NO;
 		activeCard.frame = kActiveCardFrame;
 		[activeCard addSubview:incomingCardView];
-		[cardScroller addSubview:activeCard];
+		//[cardScroller addSubview:activeCard];
+        currentCardView = incomingCardView;
+        [self.delegate cardSliderDidSlideNext:self];
 	}
 	
 	scrollView.contentOffset = CGPointMake(scrollView.frame.size.width, 0);
@@ -202,6 +246,9 @@
 	//This is the end of a move, so reset the did-'s:
 	didStartScrollingPrev = NO;
 	didStartScrollingNext = NO;
+
 }
+
+
 
 @end
